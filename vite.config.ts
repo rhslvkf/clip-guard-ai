@@ -1,10 +1,20 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
+import { copyFileSync } from 'fs';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'copy-manifest',
+      closeBundle() {
+        // Copy manifest.json to dist
+        copyFileSync('public/manifest.json', 'dist/manifest.json');
+      }
+    }
+  ],
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
@@ -34,4 +44,5 @@ export default defineConfig({
     // Ensure source maps for debugging
     sourcemap: true,
   },
+  publicDir: 'public',
 });
