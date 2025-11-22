@@ -636,34 +636,28 @@ export function maskSecretPatterns(text: string): MaskResult {
   results.matches.forEach((match) => {
     const baseReplacement = match.replacement;
 
-    // Extract pattern label (e.g., [AWS_KEY] → [AWS_KEY])
-    const labelMatch = baseReplacement.match(/\[([A-Z_]+)\]/);
+    // Extract ALL pattern labels (e.g., [AWS_KEY], [USER]:[PASS]@[HOST])
+    const labelMatches = baseReplacement.match(/\[([A-Z_]+)\]/g);
 
-    if (labelMatch) {
-      // Generate unique random ID for this secret
-      const randomId = generateRandomId();
+    let numberedReplacement = baseReplacement;
 
-      // Add random ID to replacement (e.g., [AWS_KEY] → [AWS_KEY#a3f7])
-      const numberedReplacement = baseReplacement.replace(
-        /\[([A-Z_]+)\]/,
-        `[$1#${randomId}]`
-      );
-
-      const start = match.index + offset;
-      const end = start + match.value.length;
-
-      masked =
-        masked.substring(0, start) + numberedReplacement + masked.substring(end);
-      offset += numberedReplacement.length - match.value.length;
-    } else {
-      // For patterns without brackets (e.g., "Bearer [TOKEN]"), use as-is
-      const start = match.index + offset;
-      const end = start + match.value.length;
-
-      masked =
-        masked.substring(0, start) + baseReplacement + masked.substring(end);
-      offset += baseReplacement.length - match.value.length;
+    if (labelMatches && labelMatches.length > 0) {
+      // Replace each [LABEL] with [LABEL#xxxx]
+      labelMatches.forEach((label) => {
+        const randomId = generateRandomId();
+        numberedReplacement = numberedReplacement.replace(
+          label,
+          label.replace(/\[([A-Z_]+)\]/, `[$1#${randomId}]`)
+        );
+      });
     }
+
+    const start = match.index + offset;
+    const end = start + match.value.length;
+
+    masked =
+      masked.substring(0, start) + numberedReplacement + masked.substring(end);
+    offset += numberedReplacement.length - match.value.length;
   });
 
   return {
@@ -698,21 +692,20 @@ export function maskWithRestore(text: string): RestorableMaskResult {
   results.matches.forEach((match) => {
     const baseReplacement = match.replacement;
 
-    const labelMatch = baseReplacement.match(/\[([A-Z_]+)\]/);
+    // Extract ALL pattern labels (e.g., [AWS_KEY], [USER]:[PASS]@[HOST])
+    const labelMatches = baseReplacement.match(/\[([A-Z_]+)\]/g);
 
-    let numberedReplacement: string;
+    let numberedReplacement = baseReplacement;
 
-    if (labelMatch) {
-      // Generate unique random ID for this secret
-      const randomId = generateRandomId();
-
-      numberedReplacement = baseReplacement.replace(
-        /\[([A-Z_]+)\]/,
-        `[$1#${randomId}]`
-      );
-    } else {
-      // For patterns without brackets (e.g., "Bearer [TOKEN]"), use as-is
-      numberedReplacement = baseReplacement;
+    if (labelMatches && labelMatches.length > 0) {
+      // Replace each [LABEL] with [LABEL#xxxx]
+      labelMatches.forEach((label) => {
+        const randomId = generateRandomId();
+        numberedReplacement = numberedReplacement.replace(
+          label,
+          label.replace(/\[([A-Z_]+)\]/, `[$1#${randomId}]`)
+        );
+      });
     }
 
     restoreMap.push({
