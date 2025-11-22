@@ -603,7 +603,19 @@ export function detectSecretPatterns(text: string): DetectionResult {
 }
 
 /**
- * Mask secrets in text
+ * Generate random alphanumeric ID (4 characters)
+ */
+function generateRandomId(): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < 4; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+/**
+ * Mask secrets in text with random-numbered placeholders
  * @param text - Input text
  * @returns Masked result
  */
@@ -622,13 +634,36 @@ export function maskSecretPatterns(text: string): MaskResult {
   let offset = 0;
 
   results.matches.forEach((match) => {
-    const replacement = match.replacement;
+    const baseReplacement = match.replacement;
 
-    const start = match.index + offset;
-    const end = start + match.value.length;
+    // Extract pattern label (e.g., [AWS_KEY] → [AWS_KEY])
+    const labelMatch = baseReplacement.match(/\[([A-Z_]+)\]/);
 
-    masked = masked.substring(0, start) + replacement + masked.substring(end);
-    offset += replacement.length - match.value.length;
+    if (labelMatch) {
+      // Generate unique random ID for this secret
+      const randomId = generateRandomId();
+
+      // Add random ID to replacement (e.g., [AWS_KEY] → [AWS_KEY#a3f7])
+      const numberedReplacement = baseReplacement.replace(
+        /\[([A-Z_]+)\]/,
+        `[$1#${randomId}]`
+      );
+
+      const start = match.index + offset;
+      const end = start + match.value.length;
+
+      masked =
+        masked.substring(0, start) + numberedReplacement + masked.substring(end);
+      offset += numberedReplacement.length - match.value.length;
+    } else {
+      // For patterns without brackets (e.g., "Bearer [TOKEN]"), use as-is
+      const start = match.index + offset;
+      const end = start + match.value.length;
+
+      masked =
+        masked.substring(0, start) + baseReplacement + masked.substring(end);
+      offset += baseReplacement.length - match.value.length;
+    }
   });
 
   return {
@@ -640,6 +675,7 @@ export function maskSecretPatterns(text: string): MaskResult {
 
 /**
  * Mask secrets with restore capability (Pro feature)
+ * Uses random IDs for unique identification across sessions
  */
 export function maskWithRestore(text: string): RestorableMaskResult {
   const results = detectSecretPatterns(text);
@@ -654,7 +690,6 @@ export function maskWithRestore(text: string): RestorableMaskResult {
   }
 
   const restoreMap: RestoreMapEntry[] = [];
-  const patternCounters: Record<string, number> = {};
   let masked = text;
   let offset = 0;
 
@@ -664,18 +699,21 @@ export function maskWithRestore(text: string): RestorableMaskResult {
     const baseReplacement = match.replacement;
 
     const labelMatch = baseReplacement.match(/\[([A-Z_]+)\]/);
-    const patternLabel = labelMatch ? labelMatch[0] : baseReplacement;
 
-    if (!patternCounters[patternLabel]) {
-      patternCounters[patternLabel] = 0;
+    let numberedReplacement: string;
+
+    if (labelMatch) {
+      // Generate unique random ID for this secret
+      const randomId = generateRandomId();
+
+      numberedReplacement = baseReplacement.replace(
+        /\[([A-Z_]+)\]/,
+        `[$1#${randomId}]`
+      );
+    } else {
+      // For patterns without brackets (e.g., "Bearer [TOKEN]"), use as-is
+      numberedReplacement = baseReplacement;
     }
-    patternCounters[patternLabel]++;
-    const count = patternCounters[patternLabel];
-
-    const numberedReplacement = baseReplacement.replace(
-      /\[([A-Z_]+)\]/,
-      `[$1#${count}]`
-    );
 
     restoreMap.push({
       type: match.type,
