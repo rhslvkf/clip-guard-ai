@@ -5,9 +5,10 @@
 interface SiteStatusProps {
   hostname: string | null;
   isRegistered: boolean;
+  isSiteEnabled: boolean;
 }
 
-export function SiteStatus({ hostname, isRegistered }: SiteStatusProps) {
+export function SiteStatus({ hostname, isRegistered, isSiteEnabled }: SiteStatusProps) {
   if (!hostname) {
     return (
       <div className="flex items-center gap-2 p-3 bg-bg-secondary rounded-lg border border-border-default">
@@ -17,11 +18,14 @@ export function SiteStatus({ hostname, isRegistered }: SiteStatusProps) {
     );
   }
 
+  // Active = registered AND site-specific enabled
+  const isActive = isRegistered && isSiteEnabled;
+
   return (
     <div className="flex items-center gap-2 p-3 bg-bg-secondary rounded-lg border border-border-default">
       <div
         className={`w-2 h-2 rounded-full ${
-          isRegistered ? 'bg-accent-primary' : 'bg-text-muted'
+          isActive ? 'bg-accent-primary' : 'bg-text-muted'
         }`}
       />
       <div className="flex-1 min-w-0">
@@ -30,12 +34,12 @@ export function SiteStatus({ hostname, isRegistered }: SiteStatusProps) {
       </div>
       <span
         className={`text-xs px-2 py-1 rounded ${
-          isRegistered
+          isActive
             ? 'bg-accent-primary/10 text-accent-primary'
             : 'bg-text-muted/10 text-text-muted'
         }`}
       >
-        {isRegistered ? 'Protected' : 'Not Protected'}
+        {isActive ? 'Protected' : isRegistered ? 'Disabled' : 'Not Protected'}
       </span>
     </div>
   );

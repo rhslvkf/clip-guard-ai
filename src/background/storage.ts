@@ -13,7 +13,22 @@ export interface AppSettings {
     network: boolean;
     pii: boolean;
   };
+  categoryCounts: {
+    cloud_keys: number;
+    api_tokens: number;
+    private_keys: number;
+    passwords: number;
+    database: number;
+    network: number;
+    pii: number;
+  };
   registeredSites: string[];
+  siteSettings: {
+    [hostname: string]: {
+      enabled: boolean;
+      protectedCount: number;
+    };
+  };
   protectedCount: number;
 }
 
@@ -28,6 +43,15 @@ const DEFAULT_SETTINGS: AppSettings = {
     network: true,
     pii: false, // Optional category, disabled by default
   },
+  categoryCounts: {
+    cloud_keys: 0,
+    api_tokens: 0,
+    private_keys: 0,
+    passwords: 0,
+    database: 0,
+    network: 0,
+    pii: 0,
+  },
   registeredSites: [
     'chatgpt.com',
     'claude.ai',
@@ -35,6 +59,13 @@ const DEFAULT_SETTINGS: AppSettings = {
     'www.perplexity.ai',
     'grok.com',
   ],
+  siteSettings: {
+    'chatgpt.com': { enabled: true, protectedCount: 0 },
+    'claude.ai': { enabled: true, protectedCount: 0 },
+    'gemini.google.com': { enabled: true, protectedCount: 0 },
+    'www.perplexity.ai': { enabled: true, protectedCount: 0 },
+    'grok.com': { enabled: true, protectedCount: 0 },
+  },
   protectedCount: 0,
 };
 
@@ -142,4 +173,153 @@ export async function getProtectedCount(): Promise<number> {
  */
 export async function resetProtectedCount(): Promise<void> {
   await updateSetting('protectedCount', 0);
+}
+
+/**
+ * Check if masking is enabled for specific site
+ */
+export async function isSiteEnabled(hostname: string): Promise<boolean> {
+  const settings = await getSettings();
+
+  // Check if site is registered
+  if (!settings.registeredSites.includes(hostname)) {
+    return false;
+  }
+
+  // Check global enabled status
+  if (!settings.enabled) {
+    return false;
+  }
+
+  // Check site-specific settings
+  if (settings.siteSettings && settings.siteSettings[hostname]) {
+    return settings.siteSettings[hostname].enabled;
+  }
+
+  // Default to enabled if no site-specific setting
+  return true;
+}
+
+/**
+ * Toggle site-specific enabled status
+ */
+export async function toggleSiteEnabled(hostname: string): Promise<boolean> {
+  const settings = await getSettings();
+
+  // Initialize siteSettings if not exists
+  if (!settings.siteSettings) {
+    settings.siteSettings = {};
+  }
+
+  // Initialize site setting if not exists
+  if (!settings.siteSettings[hostname]) {
+    settings.siteSettings[hostname] = { enabled: true, protectedCount: 0 };
+  }
+
+  // Toggle the setting
+  settings.siteSettings[hostname].enabled = !settings.siteSettings[hostname].enabled;
+  await saveSettings(settings);
+
+  return settings.siteSettings[hostname].enabled;
+}
+
+/**
+ * Update site-specific enabled status
+ */
+export async function updateSiteEnabled(hostname: string, enabled: boolean): Promise<void> {
+  const settings = await getSettings();
+
+  // Initialize siteSettings if not exists
+  if (!settings.siteSettings) {
+    settings.siteSettings = {};
+  }
+
+  // Update or create site setting
+  const existingCount = settings.siteSettings[hostname]?.protectedCount || 0;
+  settings.siteSettings[hostname] = { enabled, protectedCount: existingCount };
+  await saveSettings(settings);
+}
+
+/**
+ * Increment site-specific protected count
+ */
+export async function incrementSiteProtectedCount(hostname: string, count: number = 1): Promise<void> {
+  const settings = await getSettings();
+
+  console.log('[Clip Guard AI] incrementSiteProtectedCount called with hostname:', hostname);
+  console.log('[Clip Guard AI] Available siteSettings:', Object.keys(settings.siteSettings || {}));
+
+  // Initialize siteSettings if not exists
+  if (!settings.siteSettings) {
+    settings.siteSettings = {};
+  }
+
+  // Try to find matching site (with or without www prefix)
+  let matchedHostname = hostname;
+
+  // Check if hostname exists in siteSettings
+  if (!settings.siteSettings[hostname]) {
+    // Try with www prefix
+    const withWww = hostname.startsWith('www.') ? hostname : `www.${hostname}`;
+    const withoutWww = hostname.startsWith('www.') ? hostname.substring(4) : hostname;
+
+    console.log('[Clip Guard AI] Trying to match - withWww:', withWww, 'withoutWww:', withoutWww);
+
+    if (settings.siteSettings[withWww]) {
+      matchedHostname = withWww;
+      console.log('[Clip Guard AI] Matched with www:', matchedHostname);
+    } else if (settings.siteSettings[withoutWww]) {
+      matchedHostname = withoutWww;
+      console.log('[Clip Guard AI] Matched without www:', matchedHostname);
+    } else {
+      // Initialize new site setting
+      settings.siteSettings[hostname] = { enabled: true, protectedCount: 0 };
+      console.log('[Clip Guard AI] Created new site setting for:', hostname);
+    }
+  } else {
+    console.log('[Clip Guard AI] Direct match found:', hostname);
+  }
+
+  // Initialize protectedCount if not exists (migration)
+  if (typeof settings.siteSettings[matchedHostname].protectedCount !== 'number') {
+    settings.siteSettings[matchedHostname].protectedCount = 0;
+    console.log('[Clip Guard AI] Initialized protectedCount for:', matchedHostname);
+  }
+
+  // Increment site-specific count
+  console.log('[Clip Guard AI] Incrementing count for:', matchedHostname, 'by', count);
+  settings.siteSettings[matchedHostname].protectedCount += count;
+  await saveSettings(settings);
+  console.log('[Clip Guard AI] Updated count:', settings.siteSettings[matchedHostname].protectedCount);
+}
+
+/**
+ * Increment category-specific counters
+ */
+export async function incrementCategoryCounts(
+  categoryCounts: Record<string, number>
+): Promise<void> {
+  const settings = await getSettings();
+
+  // Initialize categoryCounts if not exists (for migration)
+  if (!settings.categoryCounts) {
+    settings.categoryCounts = {
+      cloud_keys: 0,
+      api_tokens: 0,
+      private_keys: 0,
+      passwords: 0,
+      database: 0,
+      network: 0,
+      pii: 0,
+    };
+  }
+
+  // Increment each category count
+  for (const [category, count] of Object.entries(categoryCounts)) {
+    if (settings.categoryCounts[category as keyof typeof settings.categoryCounts] !== undefined) {
+      settings.categoryCounts[category as keyof typeof settings.categoryCounts] += count;
+    }
+  }
+
+  await saveSettings(settings);
 }

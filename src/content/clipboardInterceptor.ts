@@ -5,12 +5,22 @@
 
 import { handlePaste } from './pasteHandler';
 
+// Track if interceptor is active
+let isActive = false;
+
 /**
  * Initialize clipboard interception
  */
 export function initClipboardInterceptor(): void {
+  // Prevent duplicate initialization
+  if (isActive) {
+    console.warn('[Clip Guard AI] Clipboard interceptor already active, skipping initialization');
+    return;
+  }
+
   // Listen for paste events on the document
   document.addEventListener('paste', handlePaste, true);
+  isActive = true;
 
   console.log('[Clip Guard AI] Clipboard interceptor initialized');
 }
@@ -19,7 +29,13 @@ export function initClipboardInterceptor(): void {
  * Cleanup clipboard interceptor
  */
 export function cleanupClipboardInterceptor(): void {
+  if (!isActive) {
+    console.warn('[Clip Guard AI] Clipboard interceptor not active, skipping cleanup');
+    return;
+  }
+
   document.removeEventListener('paste', handlePaste, true);
+  isActive = false;
 
   console.log('[Clip Guard AI] Clipboard interceptor cleaned up');
 }

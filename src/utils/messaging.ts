@@ -11,8 +11,12 @@ export type MessageType =
   | 'REMOVE_SITE'
   | 'IS_SITE_REGISTERED'
   | 'INCREMENT_PROTECTED_COUNT'
+  | 'INCREMENT_CATEGORY_COUNTS'
+  | 'INCREMENT_SITE_COUNT'
   | 'GET_PROTECTED_COUNT'
-  | 'RESET_PROTECTED_COUNT';
+  | 'RESET_PROTECTED_COUNT'
+  | 'IS_SITE_ENABLED'
+  | 'SETTINGS_CHANGED';
 
 export interface Message {
   type: MessageType;

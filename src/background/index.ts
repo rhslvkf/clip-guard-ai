@@ -11,6 +11,9 @@ import {
   incrementProtectedCount,
   getProtectedCount,
   resetProtectedCount,
+  isSiteEnabled,
+  incrementCategoryCounts,
+  incrementSiteProtectedCount,
 } from './storage';
 import {
   getRegisteredSites,
@@ -101,6 +104,45 @@ async function handleMessage(
 
       case 'RESET_PROTECTED_COUNT': {
         await resetProtectedCount();
+        return { success: true };
+      }
+
+      case 'IS_SITE_ENABLED': {
+        const enabled = await isSiteEnabled(data.hostname);
+        return { success: true, data: { enabled } };
+      }
+
+      case 'INCREMENT_CATEGORY_COUNTS': {
+        await incrementCategoryCounts(data.categoryCounts);
+        return { success: true };
+      }
+
+      case 'INCREMENT_SITE_COUNT': {
+        await incrementSiteProtectedCount(data.hostname, data.count || 1);
+        return { success: true };
+      }
+
+      case 'SETTINGS_CHANGED': {
+        // Broadcast to all tabs
+        const tabs = await chrome.tabs.query({});
+        for (const tab of tabs) {
+          if (tab.id && tab.url) {
+            try {
+              const url = new URL(tab.url);
+              // Only notify tabs that match the changed hostname or broadcast to all
+              if (!data.hostname || url.hostname === data.hostname) {
+                chrome.tabs.sendMessage(tab.id, {
+                  type: 'SETTINGS_CHANGED',
+                  data: data,
+                }).catch(() => {
+                  // Ignore errors for tabs without content script
+                });
+              }
+            } catch {
+              // Ignore invalid URLs
+            }
+          }
+        }
         return { success: true };
       }
 

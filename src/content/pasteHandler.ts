@@ -5,6 +5,7 @@
 
 import { maskSecretPatterns } from '@/core/detector';
 import { incrementProtectedCount } from './clipboardInterceptor';
+import { showToast } from './toast';
 
 /**
  * Handle paste event and mask secrets
@@ -18,26 +19,78 @@ export function handlePaste(event: ClipboardEvent): void {
   const originalText = clipboardData.getData('text/plain');
   if (!originalText) return;
 
-  // Apply masking
-  const result = maskSecretPatterns(originalText);
-
-  // If no secrets detected, allow normal paste
-  if (result.replacements === 0) {
-    return;
-  }
-
-  // Prevent default paste behavior
+  // Prevent default paste behavior immediately (before async operations)
   event.preventDefault();
   event.stopPropagation();
+
+  // Process masking asynchronously
+  processPaste(originalText);
+}
+
+/**
+ * Process paste with async category settings fetch
+ */
+async function processPaste(originalText: string): Promise<void> {
+  // Get category settings from storage
+  let enabledCategories: Record<string, boolean> | undefined;
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: 'GET_SETTINGS',
+    });
+
+    if (response.success && response.data.categories) {
+      enabledCategories = response.data.categories;
+    }
+  } catch (error) {
+    console.error('[Clip Guard AI] Error getting category settings:', error);
+    // Continue with default behavior (all categories enabled)
+  }
+
+  // Apply masking with category filters
+  const result = maskSecretPatterns(originalText, enabledCategories);
+
+  // If no secrets detected, insert original text
+  if (result.replacements === 0) {
+    insertMaskedText(originalText);
+    return;
+  }
 
   // Insert masked text
   insertMaskedText(result.masked);
 
-  // Increment protected count
-  incrementProtectedCount(result.replacements);
+  // Get current hostname
+  const hostname = window.location.hostname;
+
+  // Increment protected count (total)
+  await incrementProtectedCount(result.replacements);
+
+  // Increment site-specific count
+  try {
+    await chrome.runtime.sendMessage({
+      type: 'INCREMENT_SITE_COUNT',
+      data: { hostname, count: result.replacements },
+    });
+  } catch (error) {
+    console.error('[Clip Guard AI] Error incrementing site count:', error);
+  }
+
+  // Increment category-specific counts
+  if (result.categoryCounts && Object.keys(result.categoryCounts).length > 0) {
+    try {
+      await chrome.runtime.sendMessage({
+        type: 'INCREMENT_CATEGORY_COUNTS',
+        data: { categoryCounts: result.categoryCounts },
+      });
+    } catch (error) {
+      console.error('[Clip Guard AI] Error incrementing category counts:', error);
+    }
+  }
+
+  // Show toast notification
+  showToast(result.replacements);
 
   // Log detection (optional, for debugging)
-  console.log(`[Clip Guard AI] Masked ${result.replacements} secret(s)`);
+  console.log(`[Clip Guard AI] Masked ${result.replacements} secret(s) on ${hostname}`, result.categoryCounts);
 }
 
 /**

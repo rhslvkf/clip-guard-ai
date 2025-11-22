@@ -31,6 +31,7 @@ interface MaskResult {
   masked: string;
   original: string;
   replacements: number;
+  categoryCounts: Record<string, number>;
 }
 
 /**
@@ -540,9 +541,13 @@ export function isHighEntropy(str: string, threshold: number = 4.5): boolean {
 /**
  * Detect secrets in text
  * @param text - Input text to scan
+ * @param enabledCategories - Optional category filters
  * @returns Detection results
  */
-export function detectSecretPatterns(text: string): DetectionResult {
+export function detectSecretPatterns(
+  text: string,
+  enabledCategories?: Record<string, boolean>
+): DetectionResult {
   const matches: PatternMatch[] = [];
   const matchedRanges: MatchedRange[] = [];
 
@@ -563,7 +568,15 @@ export function detectSecretPatterns(text: string): DetectionResult {
   }
 
   sortedPatterns.forEach(([_key, pattern]) => {
-    if (pattern.optional) return;
+    // Skip optional patterns (like PII) if not explicitly enabled
+    if (pattern.optional && (!enabledCategories || !enabledCategories[pattern.category])) {
+      return;
+    }
+
+    // Skip patterns whose category is disabled
+    if (enabledCategories && enabledCategories[pattern.category] === false) {
+      return;
+    }
 
     const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
     let match: RegExpExecArray | null;
@@ -617,18 +630,30 @@ function generateRandomId(): string {
 /**
  * Mask secrets in text with random-numbered placeholders
  * @param text - Input text
+ * @param enabledCategories - Optional category filters
  * @returns Masked result
  */
-export function maskSecretPatterns(text: string): MaskResult {
-  const results = detectSecretPatterns(text);
+export function maskSecretPatterns(
+  text: string,
+  enabledCategories?: Record<string, boolean>
+): MaskResult {
+  const results = detectSecretPatterns(text, enabledCategories);
 
   if (results.matches.length === 0) {
     return {
       masked: text,
       original: text,
       replacements: 0,
+      categoryCounts: {},
     };
   }
+
+  // Count matches by category
+  const categoryCounts: Record<string, number> = {};
+  results.matches.forEach((match) => {
+    const category = match.category;
+    categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+  });
 
   let masked = text;
   let offset = 0;
@@ -664,15 +689,22 @@ export function maskSecretPatterns(text: string): MaskResult {
     masked,
     original: text,
     replacements: results.matches.length,
+    categoryCounts,
   };
 }
 
 /**
  * Mask secrets with restore capability (Pro feature)
  * Uses random IDs for unique identification across sessions
+ * @param text - Input text
+ * @param enabledCategories - Optional category filters
+ * @returns Restorable masked result
  */
-export function maskWithRestore(text: string): RestorableMaskResult {
-  const results = detectSecretPatterns(text);
+export function maskWithRestore(
+  text: string,
+  enabledCategories?: Record<string, boolean>
+): RestorableMaskResult {
+  const results = detectSecretPatterns(text, enabledCategories);
 
   if (results.matches.length === 0) {
     return {

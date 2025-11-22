@@ -20,9 +20,15 @@ body {
 }
 
 /* Popup specific styles */
-#root {
+body:not(.settings-page) #root {
   width: 320px;
   min-height: 400px;
+}
+
+/* Settings page styles */
+body.settings-page #root {
+  width: 100%;
+  min-height: 100vh;
 }
 
 /* Scrollbar styles */
