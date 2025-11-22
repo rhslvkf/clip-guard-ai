@@ -246,9 +246,6 @@ export async function updateSiteEnabled(hostname: string, enabled: boolean): Pro
 export async function incrementSiteProtectedCount(hostname: string, count: number = 1): Promise<void> {
   const settings = await getSettings();
 
-  console.log('[Clip Guard AI] incrementSiteProtectedCount called with hostname:', hostname);
-  console.log('[Clip Guard AI] Available siteSettings:', Object.keys(settings.siteSettings || {}));
-
   // Initialize siteSettings if not exists
   if (!settings.siteSettings) {
     settings.siteSettings = {};
@@ -263,34 +260,24 @@ export async function incrementSiteProtectedCount(hostname: string, count: numbe
     const withWww = hostname.startsWith('www.') ? hostname : `www.${hostname}`;
     const withoutWww = hostname.startsWith('www.') ? hostname.substring(4) : hostname;
 
-    console.log('[Clip Guard AI] Trying to match - withWww:', withWww, 'withoutWww:', withoutWww);
-
     if (settings.siteSettings[withWww]) {
       matchedHostname = withWww;
-      console.log('[Clip Guard AI] Matched with www:', matchedHostname);
     } else if (settings.siteSettings[withoutWww]) {
       matchedHostname = withoutWww;
-      console.log('[Clip Guard AI] Matched without www:', matchedHostname);
     } else {
       // Initialize new site setting
       settings.siteSettings[hostname] = { enabled: true, protectedCount: 0 };
-      console.log('[Clip Guard AI] Created new site setting for:', hostname);
     }
-  } else {
-    console.log('[Clip Guard AI] Direct match found:', hostname);
   }
 
   // Initialize protectedCount if not exists (migration)
   if (typeof settings.siteSettings[matchedHostname].protectedCount !== 'number') {
     settings.siteSettings[matchedHostname].protectedCount = 0;
-    console.log('[Clip Guard AI] Initialized protectedCount for:', matchedHostname);
   }
 
   // Increment site-specific count
-  console.log('[Clip Guard AI] Incrementing count for:', matchedHostname, 'by', count);
   settings.siteSettings[matchedHostname].protectedCount += count;
   await saveSettings(settings);
-  console.log('[Clip Guard AI] Updated count:', settings.siteSettings[matchedHostname].protectedCount);
 }
 
 /**
