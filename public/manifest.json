@@ -23,12 +23,12 @@
   "content_scripts": [
     {
       "matches": [
-        "https://chat.openai.com/*",
+        "https://chatgpt.com/*",
         "https://claude.ai/*",
         "https://gemini.google.com/*",
-        "https://copilot.github.com/*",
-        "https://perplexity.ai/*",
-        "https://poe.com/*"
+        "https://www.perplexity.ai/*",
+        "https://poe.com/*",
+        "https://grok.com/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle"
@@ -39,12 +39,12 @@
     "activeTab"
   ],
   "host_permissions": [
-    "https://chat.openai.com/*",
+    "https://chatgpt.com/*",
     "https://claude.ai/*",
     "https://gemini.google.com/*",
-    "https://copilot.github.com/*",
-    "https://perplexity.ai/*",
-    "https://poe.com/*"
+    "https://www.perplexity.ai/*",
+    "https://poe.com/*",
+    "https://grok.com/*"
   ],
   "options_page": "settings.html",
   "web_accessible_resources": [
