@@ -29,10 +29,30 @@ export function cleanupClipboardInterceptor(): void {
  */
 export async function isExtensionEnabled(): Promise<boolean> {
   try {
-    const result = await chrome.storage.local.get('enabled');
-    return result.enabled !== false; // Default to true
+    const response = await chrome.runtime.sendMessage({
+      type: 'GET_SETTINGS',
+    });
+
+    if (response.success) {
+      return response.data.enabled !== false; // Default to true
+    }
+    return true;
   } catch (error) {
     console.error('[Clip Guard AI] Error checking enabled status:', error);
     return true; // Default to enabled on error
+  }
+}
+
+/**
+ * Increment protected secrets counter
+ */
+export async function incrementProtectedCount(count: number = 1): Promise<void> {
+  try {
+    await chrome.runtime.sendMessage({
+      type: 'INCREMENT_PROTECTED_COUNT',
+      data: { count },
+    });
+  } catch (error) {
+    console.error('[Clip Guard AI] Error incrementing protected count:', error);
   }
 }

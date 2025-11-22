@@ -4,6 +4,7 @@
  */
 
 import { maskSecretPatterns } from '@/core/detector';
+import { incrementProtectedCount } from './clipboardInterceptor';
 
 /**
  * Handle paste event and mask secrets
@@ -31,6 +32,9 @@ export function handlePaste(event: ClipboardEvent): void {
 
   // Insert masked text
   insertMaskedText(result.masked);
+
+  // Increment protected count
+  incrementProtectedCount(result.replacements);
 
   // Log detection (optional, for debugging)
   console.log(`[Clip Guard AI] Masked ${result.replacements} secret(s)`);
