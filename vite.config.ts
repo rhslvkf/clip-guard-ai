@@ -8,10 +8,13 @@ export default defineConfig({
   plugins: [
     react(),
     {
-      name: 'copy-manifest',
+      name: 'copy-files',
       closeBundle() {
         // Copy manifest.json to dist
         copyFileSync('public/manifest.json', 'dist/manifest.json');
+        // Copy built HTML files from dist/public to dist root
+        copyFileSync('dist/public/popup.html', 'dist/popup.html');
+        copyFileSync('dist/public/settings.html', 'dist/settings.html');
       }
     }
   ],
