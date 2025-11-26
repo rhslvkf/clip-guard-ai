@@ -66,11 +66,6 @@ const CATEGORY_INFO: CategoryInfo[] = [
         maskedAs: '[AWS_KEY]',
       },
       {
-        name: 'AWS Secret Access Key',
-        pattern: 'Variable names containing SECRET + KEY followed by = or : and a 40-character base64-like string',
-        maskedAs: '[AWS_SECRET]',
-      },
-      {
         name: 'Google Cloud API Key',
         pattern: 'Starts with AIza + 35 characters (letters, numbers, -, _)',
         maskedAs: '[GOOGLE_KEY]',
@@ -103,11 +98,6 @@ const CATEGORY_INFO: CategoryInfo[] = [
         maskedAs: '[NPM_TOKEN]',
       },
       {
-        name: 'NPM Auth Token',
-        pattern: '_authToken or --token followed by = and npm_ token',
-        maskedAs: '[NPM_TOKEN]',
-      },
-      {
         name: 'JWT Token',
         pattern: 'Starts with eyJ + two periods separating three base64 segments',
         maskedAs: '[JWT]',
@@ -133,11 +123,6 @@ const CATEGORY_INFO: CategoryInfo[] = [
         maskedAs: '[SENDGRID_KEY]',
       },
       {
-        name: 'Cloudflare API Token',
-        pattern: 'CLOUDFLARE_API_TOKEN variable followed by 40-character token',
-        maskedAs: '[CLOUDFLARE_TOKEN]',
-      },
-      {
         name: 'Slack Webhook',
         pattern: 'URL: https://hooks.slack.com/services/ or https://api.slack.com/webhook/',
         maskedAs: '[SLACK_WEBHOOK]',
@@ -151,21 +136,6 @@ const CATEGORY_INFO: CategoryInfo[] = [
         name: 'Slack Bot Token',
         pattern: 'Starts with xoxb-, xoxa-, xoxp-, xoxr-, or xoxs- + numbers and characters',
         maskedAs: '[SLACK_TOKEN]',
-      },
-      {
-        name: 'Discord Bot Token',
-        pattern: 'Starts with M or N + 23+ characters, period, 6 characters, period, 27+ characters',
-        maskedAs: '[DISCORD_TOKEN]',
-      },
-      {
-        name: 'Telegram Bot Token',
-        pattern: '8-10 digits followed by colon and 20+ characters',
-        maskedAs: '[TELEGRAM_TOKEN]',
-      },
-      {
-        name: 'Generic API Key',
-        pattern: 'api_key or apikey followed by 32+ alphanumeric characters',
-        maskedAs: '[API_KEY]',
       },
     ],
   },
@@ -215,11 +185,6 @@ const CATEGORY_INFO: CategoryInfo[] = [
         name: 'Password Field',
         pattern: 'password, passwd, or pwd variable followed by = or : and 6+ characters',
         maskedAs: '[PASS]',
-      },
-      {
-        name: 'User Field',
-        pattern: 'user or username variable followed by = or : and quoted value',
-        maskedAs: '[USER]',
       },
       {
         name: 'Environment Password',

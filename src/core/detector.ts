@@ -65,26 +65,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     severity: 'high',
   },
 
-  awsSecretKey: {
-    name: 'AWS Secret Key',
-    regex:
-      /(AWS_SECRET_ACCESS_KEY|AWS_SECRET_KEY|secretAccessKey|secret_access_key|secret_key)(\s*[=:]\s*)(['"]?)([A-Za-z0-9/+=]{40})\3/g,
-    replacement: (match: string): string => {
-      const sepMatch = match.match(/\s*[=:]\s*/);
-      const quoteMatch = match.match(/['"]([A-Za-z0-9/+=]{40})['"]/);
-      const quote = quoteMatch ? quoteMatch[0][0] : '';
-      if (sepMatch) {
-        const sepIndex = match.indexOf(sepMatch[0]);
-        const keyPart = match.substring(0, sepIndex);
-        return `${keyPart}${sepMatch[0]}${quote}[AWS_SECRET]${quote}`;
-      }
-      return `${quote}[AWS_SECRET]${quote}`;
-    },
-    category: 'cloud_keys',
-    severity: 'high',
-    priority: 10,
-  },
-
   googleApiKey: {
     name: 'Google API Key',
     regex: /AIza[0-9A-Za-z\-_]{35}/g,
@@ -127,20 +107,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     severity: 'high',
   },
 
-  npmAuthToken: {
-    name: 'NPM Auth Token',
-    regex: /(_authToken|--token)[=\s]+(['"]?)npm_[A-Za-z0-9]+\2/g,
-    replacement: (match: string): string => {
-      const prefix = match.startsWith('_authToken')
-        ? '_authToken='
-        : '--token=';
-      return `${prefix}[NPM_TOKEN]`;
-    },
-    category: 'api_tokens',
-    severity: 'high',
-    priority: 5,
-  },
-
   jwtToken: {
     name: 'JWT Token',
     regex: /eyJ[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]*/g,
@@ -181,25 +147,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     severity: 'high',
   },
 
-  cloudflareApiToken: {
-    name: 'Cloudflare API Token',
-    regex:
-      /CLOUDFLARE_API_TOKEN['":\s=]+['"]?([A-Za-z0-9]{40})['"]?/g,
-    replacement: (match: string): string => {
-      const sepMatch = match.match(/[=:]\s*/);
-      const quoteMatch = match.match(/['"][A-Za-z0-9]{40}['"]/);
-      const quote = quoteMatch ? quoteMatch[0][0] : '';
-      if (sepMatch) {
-        const sepIndex = match.indexOf(sepMatch[0]);
-        const keyPart = match.substring(0, sepIndex);
-        return `${keyPart}${sepMatch[0]}${quote}[CLOUDFLARE_TOKEN]${quote}`;
-      }
-      return `${quote}[CLOUDFLARE_TOKEN]${quote}`;
-    },
-    category: 'api_tokens',
-    severity: 'high',
-  },
-
   slackWebhook: {
     name: 'Slack Webhook',
     regex:
@@ -224,30 +171,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     replacement: '[SLACK_TOKEN]',
     category: 'api_tokens',
     severity: 'high',
-  },
-
-  discordBotToken: {
-    name: 'Discord Bot Token',
-    regex: /[MN][A-Za-z0-9]{23,}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{27,}/g,
-    replacement: '[DISCORD_TOKEN]',
-    category: 'api_tokens',
-    severity: 'high',
-  },
-
-  telegramBotToken: {
-    name: 'Telegram Bot Token',
-    regex: /[0-9]{8,10}:[A-Za-z0-9_-]{20,}/g,
-    replacement: '[TELEGRAM_TOKEN]',
-    category: 'api_tokens',
-    severity: 'high',
-  },
-
-  genericApiKey: {
-    name: 'Generic API Key',
-    regex: /api[_-]?key[_-]?[0-9a-zA-Z]{32,}/gi,
-    replacement: '[API_KEY]',
-    category: 'api_tokens',
-    severity: 'medium',
   },
 
   // ===== 🔐 PRIVATE KEYS & CERTIFICATES =====
@@ -322,20 +245,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     },
     category: 'passwords',
     severity: 'high',
-  },
-
-  userField: {
-    name: 'User Field',
-    regex: /\b(user|username)\s*[=:]\s*['"]([^'"]+)['"]/gi,
-    replacement: (match: string): string => {
-      const userMatch = match.match(/['"]([^'"]+)['"]$/);
-      if (userMatch) {
-        return match.replace(userMatch[1], '[USER]');
-      }
-      return match;
-    },
-    category: 'passwords',
-    severity: 'medium',
   },
 
   envPassword: {

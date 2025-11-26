@@ -7,7 +7,7 @@ A developer-focused browser extension that automatically detects and masks secre
 ## ✨ Features
 
 ### 🔐 Smart Secret Detection
-- **39 Built-in Patterns**: Automatically detects AWS keys, GitHub tokens, private keys, passwords, and more
+- **32 Built-in Patterns**: Automatically detects AWS keys, GitHub tokens, private keys, passwords, and more
 - **Zero Cloud Processing**: All detection happens locally in your browser
 - **Real-time Masking**: Secrets are masked instantly as you paste
 
@@ -22,7 +22,7 @@ Pre-configured for popular AI platforms:
 ### ⚙️ Flexible Configuration
 - **7 Category Toggles**: Cloud keys, API tokens, private keys, passwords, database, network, PII
 - **Per-Site Controls**: Enable/disable protection for each site independently
-- **Pattern Details**: View all 39 detection patterns with explanations
+- **Pattern Details**: View all 33 detection patterns with explanations
 - **Usage Statistics**: Track protected secrets by category and site
 
 ### 🚀 Performance
@@ -91,23 +91,21 @@ Access advanced settings by clicking "Settings" in the popup:
 
 - **Pattern Categories**: Toggle entire categories ON/OFF
 - **Protected Sites**: Enable/disable protection per site
-- **Pattern Details**: View detection rules for all 39 patterns
+- **Pattern Details**: View detection rules for all 32 patterns
 - **Statistics**: See how many secrets were protected by category and site
 
 ## 🔍 Detection Patterns
 
-### Cloud Provider Keys (4 patterns)
+### Cloud Provider Keys (3 patterns)
 - AWS Access Key ID
-- AWS Secret Access Key
 - Google Cloud API Key
 - Azure Connection String
 
-### API & Service Tokens (16 patterns)
+### API & Service Tokens (10 patterns)
 - GitHub, GitLab, NPM tokens
 - JWT, Bearer tokens
 - OpenAI, Stripe, SendGrid API keys
-- Slack, Discord, Telegram webhooks/tokens
-- Cloudflare API tokens
+- Slack, Discord webhooks/tokens
 
 ### Private Keys & Certificates (6 patterns)
 - RSA, EC, SSH private keys
@@ -115,7 +113,7 @@ Access advanced settings by clicking "Settings" in the popup:
 - Generic private keys
 - SSL/TLS certificates
 
-### Passwords & Authentication (6 patterns)
+### Passwords & Authentication (5 patterns)
 - Password field assignments
 - Environment variable passwords
 - MySQL CLI passwords
