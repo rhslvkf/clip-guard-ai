@@ -6,6 +6,7 @@ import type { CustomPattern } from '@/types/patterns';
 
 export interface AppSettings {
   enabled: boolean;
+  enableRestoration: boolean; // Pro feature: restore originals on copy
   categories: {
     cloud_keys: boolean;
     api_tokens: boolean;
@@ -39,6 +40,7 @@ export interface AppSettings {
 
 const DEFAULT_SETTINGS: AppSettings = {
   enabled: true,
+  enableRestoration: true, // Free feature - enabled by default
   categories: {
     cloud_keys: true,
     api_tokens: true,
@@ -84,7 +86,14 @@ export async function getSettings(): Promise<AppSettings> {
   return new Promise((resolve) => {
     chrome.storage.sync.get('settings', (result) => {
       if (result.settings) {
-        resolve(result.settings as AppSettings);
+        const settings = result.settings as AppSettings;
+
+        // Migration: Add enableRestoration if missing
+        if (settings.enableRestoration === undefined) {
+          settings.enableRestoration = true; // Enable by default
+        }
+
+        resolve(settings);
       } else {
         resolve(DEFAULT_SETTINGS);
       }

@@ -39,7 +39,7 @@ interface MaskResult {
 /**
  * Interface for restore map entries
  */
-interface RestoreMapEntry {
+export interface RestoreMapEntry {
   type: string;
   original: string;
   replacement: string;
@@ -733,6 +733,7 @@ export function maskWithRestore(
 
 /**
  * Restore masked text to original using restore map
+ * Handles both [AWS_KEY#q3q1] and AWS_KEY#q3q1 formats
  */
 export function restoreFromMasked(
   maskedText: string,
@@ -746,12 +747,26 @@ export function restoreFromMasked(
 
   restoreMap.forEach((item) => {
     const numberedPattern = item.numberedReplacement;
+
+    // Escape the pattern for regex
     const escapedPattern = numberedPattern.replace(
       /[.*+?^${}()|[\]\\]/g,
       '\\$&'
     );
-    const regex = new RegExp(escapedPattern, 'g');
-    restored = restored.replace(regex, item.original);
+
+    // Match with brackets: [AWS_KEY#q3q1]
+    const regexWithBrackets = new RegExp(escapedPattern, 'g');
+    restored = restored.replace(regexWithBrackets, item.original);
+
+    // Also match without brackets: AWS_KEY#q3q1
+    // Remove [ and ] from the pattern
+    const patternWithoutBrackets = numberedPattern.replace(/^\[/, '').replace(/\]$/, '');
+    const escapedPatternNoBrackets = patternWithoutBrackets.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      '\\$&'
+    );
+    const regexWithoutBrackets = new RegExp(escapedPatternNoBrackets, 'g');
+    restored = restored.replace(regexWithoutBrackets, item.original);
   });
 
   return restored;

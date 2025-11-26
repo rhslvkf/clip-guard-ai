@@ -35,6 +35,7 @@ interface CategoryCounts {
 
 interface Settings {
   enabled: boolean;
+  enableRestoration: boolean;
   categories: Categories;
   categoryCounts: CategoryCounts;
   registeredSites: string[];
@@ -340,6 +341,26 @@ export function Settings() {
     });
   }
 
+  async function handleRestorationToggle(enabled: boolean) {
+    if (!settings) return;
+
+    const updatedSettings = {
+      ...settings,
+      enableRestoration: enabled,
+    };
+
+    setSettings(updatedSettings);
+    await saveSettings(updatedSettings);
+
+    // Notify all tabs to reload their settings
+    chrome.runtime.sendMessage({
+      type: 'SETTINGS_CHANGED',
+      data: { restoration: enabled },
+    }).catch(() => {
+      // Ignore errors
+    });
+  }
+
   async function saveSettings(updatedSettings: Settings) {
     try {
       await chrome.runtime.sendMessage({
@@ -411,6 +432,40 @@ export function Settings() {
           <p className="text-3xl font-semibold text-accent-primary mt-1">
             {settings.protectedCount.toLocaleString()}
           </p>
+        </div>
+
+        {/* Restoration Feature Toggle */}
+        <div className="mb-8 p-6 bg-bg-secondary rounded-lg border border-border-default">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-base font-semibold text-text-primary">
+                  Enable Restoration on Copy
+                </h3>
+              </div>
+              <p className="text-sm text-text-secondary mb-2">
+                Automatically restore masked values to originals when copying text from AI platforms
+              </p>
+              <div className="text-xs text-text-muted space-y-1">
+                <p>• When enabled, copying text like <code className="px-1 py-0.5 rounded bg-bg-tertiary text-accent-primary">[AWS_KEY#a3f7]</code> will restore the original secret</p>
+                <p>• Restore maps are stored in session storage only (cleared on tab close)</p>
+                <p>• Per-site isolation for security</p>
+                <p className="text-accent-warning">⚠️ Use carefully: This restores original secrets to clipboard</p>
+              </div>
+            </div>
+            <button
+              onClick={() => handleRestorationToggle(!settings.enableRestoration)}
+              className={`ml-4 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                settings.enableRestoration ? 'bg-accent-primary' : 'bg-border-strong'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  settings.enableRestoration ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
         </div>
 
         {/* Custom Patterns Section */}

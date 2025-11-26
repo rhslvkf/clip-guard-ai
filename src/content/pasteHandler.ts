@@ -3,9 +3,11 @@
  * Intercepts paste events and applies secret masking
  */
 
-import { maskSecretPatterns } from '@/core/detector';
+import { maskSecretPatterns, maskWithRestore } from '@/core/detector';
 import { incrementProtectedCount } from './clipboardInterceptor';
 import { showToast } from './toast';
+import { saveRestoreMap } from './restoreManager';
+import { updateRestorationCache } from './copyHandler';
 
 /**
  * Handle paste event and mask secrets
@@ -34,6 +36,7 @@ async function processPaste(originalText: string): Promise<void> {
   // Get category settings and custom patterns from storage
   let enabledCategories: Record<string, boolean> | undefined;
   let customPatterns: any[] | undefined;
+  let enableRestoration = false;
 
   try {
     const response = await chrome.runtime.sendMessage({
@@ -48,45 +51,85 @@ async function processPaste(originalText: string): Promise<void> {
     if (response.success && response.data.customPatterns) {
       customPatterns = response.data.customPatterns;
     }
+
+    // Check if restoration is enabled
+    if (response.success && response.data.enableRestoration) {
+      enableRestoration = true;
+    }
   } catch (error) {
     console.error('[Clip Guard AI] Error getting settings:', error);
     // Continue with default behavior (all categories enabled)
   }
 
-  // Apply masking with category filters and custom patterns
-  const result = maskSecretPatterns(originalText, enabledCategories, customPatterns);
+  // Apply masking with restoration support if enabled
+  let maskedText: string;
+  let replacements: number;
+  let categoryCounts: Record<string, number>;
+  let customPatternCounts: Record<string, number> | undefined;
+
+  if (enableRestoration) {
+    // Use maskWithRestore to enable restoration on copy
+    const restoreResult = maskWithRestore(originalText, enabledCategories, customPatterns);
+    maskedText = restoreResult.masked;
+    replacements = restoreResult.replacements;
+
+    // Save restore map to session storage
+    if (restoreResult.restoreMap.length > 0) {
+      await saveRestoreMap(restoreResult.restoreMap);
+
+      // Update in-memory cache for copy handler (synchronous access)
+      updateRestorationCache(true, restoreResult.restoreMap);
+    }
+
+    // Calculate category counts from restore map
+    categoryCounts = {};
+    restoreResult.restoreMap.forEach((entry) => {
+      const category = entry.type.split('_')[0]; // Extract category from type
+      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+    });
+  } else {
+    // Use regular masking without restoration
+    const result = maskSecretPatterns(originalText, enabledCategories, customPatterns);
+    maskedText = result.masked;
+    replacements = result.replacements;
+    categoryCounts = result.categoryCounts;
+    customPatternCounts = result.customPatternCounts;
+
+    // Clear restoration cache when disabled
+    updateRestorationCache(false, []);
+  }
 
   // If no secrets detected, insert original text
-  if (result.replacements === 0) {
+  if (replacements === 0) {
     insertMaskedText(originalText);
     return;
   }
 
   // Insert masked text
-  insertMaskedText(result.masked);
+  insertMaskedText(maskedText);
 
   // Get current hostname
   const hostname = window.location.hostname;
 
   // Increment protected count (total)
-  await incrementProtectedCount(result.replacements);
+  await incrementProtectedCount(replacements);
 
   // Increment site-specific count
   try {
     await chrome.runtime.sendMessage({
       type: 'INCREMENT_SITE_COUNT',
-      data: { hostname, count: result.replacements },
+      data: { hostname, count: replacements },
     });
   } catch (error) {
     console.error('[Clip Guard AI] Error incrementing site count:', error);
   }
 
   // Increment category-specific counts
-  if (result.categoryCounts && Object.keys(result.categoryCounts).length > 0) {
+  if (categoryCounts && Object.keys(categoryCounts).length > 0) {
     try {
       await chrome.runtime.sendMessage({
         type: 'INCREMENT_CATEGORY_COUNTS',
-        data: { categoryCounts: result.categoryCounts },
+        data: { categoryCounts },
       });
     } catch (error) {
       console.error('[Clip Guard AI] Error incrementing category counts:', error);
@@ -94,10 +137,10 @@ async function processPaste(originalText: string): Promise<void> {
   }
 
   // Increment custom pattern counts
-  if (result.customPatternCounts && Object.keys(result.customPatternCounts).length > 0) {
+  if (customPatternCounts && Object.keys(customPatternCounts).length > 0) {
     try {
       // Send each custom pattern count separately
-      for (const [patternId, count] of Object.entries(result.customPatternCounts)) {
+      for (const [patternId, count] of Object.entries(customPatternCounts)) {
         await chrome.runtime.sendMessage({
           type: 'INCREMENT_CUSTOM_PATTERN_COUNT',
           data: { patternId, count },
@@ -109,10 +152,10 @@ async function processPaste(originalText: string): Promise<void> {
   }
 
   // Show toast notification
-  showToast(result.replacements);
+  showToast(replacements);
 
   // Log detection (optional, for debugging)
-  console.log(`[Clip Guard AI] Masked ${result.replacements} secret(s) on ${hostname}`, result.categoryCounts);
+  console.log(`[Clip Guard AI] Masked ${replacements} secret(s) on ${hostname}`, categoryCounts);
 }
 
 /**

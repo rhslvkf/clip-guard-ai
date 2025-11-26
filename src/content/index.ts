@@ -5,6 +5,7 @@
 
 import { initClipboardInterceptor, isExtensionEnabled, cleanupClipboardInterceptor } from './clipboardInterceptor';
 import { cleanupToasts } from './toast';
+import { initCopyHandler } from './copyHandler';
 
 let isInitialized = false;
 
@@ -45,10 +46,14 @@ async function init() {
   // Initialize clipboard interceptor if not already initialized
   if (!isInitialized) {
     initClipboardInterceptor();
+    initCopyHandler();
     isInitialized = true;
     console.log('[Clip Guard AI] Ready to protect secrets!');
   }
 }
+
+// Note: Session storage is automatically cleared when tab/session closes
+// No need to manually clear on beforeunload (causes "Access to storage is not allowed" error)
 
 // Listen for settings changes
 chrome.runtime.onMessage.addListener((message) => {
