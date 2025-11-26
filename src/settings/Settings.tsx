@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import { CategoryToggle } from './components/CategoryToggle';
+import CustomPatternManager from './components/CustomPatternManager';
 
 interface Categories {
   cloud_keys: boolean;
@@ -410,6 +411,13 @@ export function Settings() {
           <p className="text-3xl font-semibold text-accent-primary mt-1">
             {settings.protectedCount.toLocaleString()}
           </p>
+        </div>
+
+        {/* Custom Patterns Section */}
+        <div className="mb-8">
+          <div className="p-6 bg-bg-secondary rounded-lg border border-border-default">
+            <CustomPatternManager onPatternsChange={loadSettings} />
+          </div>
         </div>
 
         {/* 2-Column Layout */}

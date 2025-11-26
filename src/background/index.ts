@@ -14,6 +14,12 @@ import {
   isSiteEnabled,
   incrementCategoryCounts,
   incrementSiteProtectedCount,
+  getCustomPatterns,
+  addCustomPattern,
+  updateCustomPattern,
+  deleteCustomPattern,
+  toggleCustomPattern,
+  incrementCustomPatternCount,
 } from './storage';
 import {
   getRegisteredSites,
@@ -143,6 +149,72 @@ async function handleMessage(
             }
           }
         }
+        return { success: true };
+      }
+
+      case 'GET_CUSTOM_PATTERNS': {
+        const patterns = await getCustomPatterns();
+        return { success: true, data: patterns };
+      }
+
+      case 'ADD_CUSTOM_PATTERN': {
+        try {
+          const newPattern = await addCustomPattern(data.pattern);
+          // Broadcast settings change to all tabs
+          await handleMessage({ type: 'SETTINGS_CHANGED', data: {} }, _sender);
+          return { success: true, data: newPattern };
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to add pattern',
+          };
+        }
+      }
+
+      case 'UPDATE_CUSTOM_PATTERN': {
+        try {
+          const updatedPattern = await updateCustomPattern(data.id, data.updates);
+          // Broadcast settings change to all tabs
+          await handleMessage({ type: 'SETTINGS_CHANGED', data: {} }, _sender);
+          return { success: true, data: updatedPattern };
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to update pattern',
+          };
+        }
+      }
+
+      case 'DELETE_CUSTOM_PATTERN': {
+        try {
+          await deleteCustomPattern(data.id);
+          // Broadcast settings change to all tabs
+          await handleMessage({ type: 'SETTINGS_CHANGED', data: {} }, _sender);
+          return { success: true };
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to delete pattern',
+          };
+        }
+      }
+
+      case 'TOGGLE_CUSTOM_PATTERN': {
+        try {
+          const enabled = await toggleCustomPattern(data.id);
+          // Broadcast settings change to all tabs
+          await handleMessage({ type: 'SETTINGS_CHANGED', data: {} }, _sender);
+          return { success: true, data: { enabled } };
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to toggle pattern',
+          };
+        }
+      }
+
+      case 'INCREMENT_CUSTOM_PATTERN_COUNT': {
+        await incrementCustomPatternCount(data.patternId, data.count || 1);
         return { success: true };
       }
 

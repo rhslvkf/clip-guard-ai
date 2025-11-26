@@ -20,10 +20,12 @@ Pre-configured for popular AI platforms:
 - Grok (grok.com)
 
 ### ⚙️ Flexible Configuration
-- **7 Category Toggles**: Cloud keys, API tokens, private keys, passwords, database, network, PII
+- **8 Category Toggles**: Cloud keys, API tokens, private keys, passwords, database, network, PII, custom
+- **Custom Patterns**: Create unlimited custom patterns for company-specific secrets
 - **Per-Site Controls**: Enable/disable protection for each site independently
-- **Pattern Details**: View all 33 detection patterns with explanations
+- **Pattern Details**: View all 32 built-in detection patterns with explanations
 - **Usage Statistics**: Track protected secrets by category and site
+- **Hash ID System**: Each masked secret gets a unique ID for future restoration (e.g., `[AWS_KEY#a3f7]`)
 
 ### 🚀 Performance
 - **Lightning Fast**: 0.67ms average detection time for 10KB text (75x faster than target)
@@ -89,10 +91,29 @@ const config = {
 
 Access advanced settings by clicking "Settings" in the popup:
 
-- **Pattern Categories**: Toggle entire categories ON/OFF
+- **Custom Patterns**: Add/edit/delete custom patterns for company-specific secrets
+- **Pattern Categories**: Toggle entire categories ON/OFF (8 categories)
 - **Protected Sites**: Enable/disable protection per site
-- **Pattern Details**: View detection rules for all 32 patterns
+- **Pattern Details**: View detection rules for all 32 built-in patterns
 - **Statistics**: See how many secrets were protected by category and site
+
+### Custom Patterns
+
+Create your own detection patterns for:
+
+```yaml
+# Example: Employee ID
+Name: Employee ID
+Regex: EMP-\d{5}
+Replacement: [EMP_ID]
+Category: custom
+Severity: high
+```
+
+**Input:** `My employee ID is EMP-12345`
+**Output:** `My employee ID is [EMP_ID#a3f7]`
+
+See [CUSTOM_PATTERNS_GUIDE.md](CUSTOM_PATTERNS_GUIDE.md) for detailed usage guide.
 
 ## 🔍 Detection Patterns
 
@@ -131,6 +152,12 @@ Access advanced settings by clicking "Settings" in the popup:
 
 ### Personal Information (1 pattern, optional)
 - Email addresses (disabled by default)
+
+### Custom Patterns (unlimited)
+- User-defined patterns for company-specific secrets
+- Full regex support with priority control
+- Real-time sync across all tabs
+- Unique hash IDs for restoration support
 
 ## 🛠️ Development
 

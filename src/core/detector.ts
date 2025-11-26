@@ -6,6 +6,7 @@
 import type {
   SecretPattern,
   PatternMatch,
+  CustomPattern,
 } from '@/types/patterns';
 
 /**
@@ -32,6 +33,7 @@ interface MaskResult {
   original: string;
   replacements: number;
   categoryCounts: Record<string, number>;
+  customPatternCounts?: Record<string, number>; // Custom pattern ID → count mapping
 }
 
 /**
@@ -448,19 +450,57 @@ export function isHighEntropy(str: string, threshold: number = 4.5): boolean {
 }
 
 /**
+ * Convert CustomPattern to SecretPattern (compile regex)
+ */
+function customPatternToSecretPattern(customPattern: CustomPattern): SecretPattern {
+  return {
+    name: customPattern.name,
+    regex: new RegExp(customPattern.regex, customPattern.flags || 'g'),
+    replacement: customPattern.replacement,
+    category: customPattern.category,
+    severity: customPattern.severity,
+    priority: customPattern.priority || 0,
+    custom: true,
+  };
+}
+
+/**
+ * Merge built-in patterns with custom patterns
+ */
+function mergePatterns(customPatterns?: CustomPattern[]): Record<string, SecretPattern> {
+  const mergedPatterns: Record<string, SecretPattern> = { ...SECRET_PATTERNS };
+
+  if (customPatterns && customPatterns.length > 0) {
+    customPatterns.forEach((customPattern) => {
+      // Only add enabled custom patterns
+      if (customPattern.enabled) {
+        mergedPatterns[customPattern.id] = customPatternToSecretPattern(customPattern);
+      }
+    });
+  }
+
+  return mergedPatterns;
+}
+
+/**
  * Detect secrets in text
  * @param text - Input text to scan
  * @param enabledCategories - Optional category filters
+ * @param customPatterns - Optional custom patterns to include
  * @returns Detection results
  */
 export function detectSecretPatterns(
   text: string,
-  enabledCategories?: Record<string, boolean>
+  enabledCategories?: Record<string, boolean>,
+  customPatterns?: CustomPattern[]
 ): DetectionResult {
   const matches: PatternMatch[] = [];
   const matchedRanges: MatchedRange[] = [];
 
-  const sortedPatterns = Object.entries(SECRET_PATTERNS).sort(
+  // Merge built-in and custom patterns
+  const allPatterns = mergePatterns(customPatterns);
+
+  const sortedPatterns = Object.entries(allPatterns).sort(
     ([, a], [, b]) => {
       return (a.priority || 0) - (b.priority || 0);
     }
@@ -476,7 +516,7 @@ export function detectSecretPatterns(
     });
   }
 
-  sortedPatterns.forEach(([_key, pattern]) => {
+  sortedPatterns.forEach(([key, pattern]) => {
     // Skip optional patterns (like PII) if not explicitly enabled
     if (pattern.optional && (!enabledCategories || !enabledCategories[pattern.category])) {
       return;
@@ -503,15 +543,21 @@ export function detectSecretPatterns(
           ? pattern.replacement(matchedValue)
           : pattern.replacement;
 
-      matches.push({
+      const matchData: PatternMatch = {
         type: pattern.name,
         value: matchedValue,
         index: start,
         replacement: replacement,
         category: pattern.category,
         severity: pattern.severity,
-      });
+      };
 
+      // Add customPatternId if this is a custom pattern
+      if (pattern.custom && key.startsWith('custom_')) {
+        matchData.customPatternId = key;
+      }
+
+      matches.push(matchData);
       matchedRanges.push({ start, end });
     }
   });
@@ -540,13 +586,15 @@ function generateRandomId(): string {
  * Mask secrets in text with random-numbered placeholders
  * @param text - Input text
  * @param enabledCategories - Optional category filters
+ * @param customPatterns - Optional custom patterns to include
  * @returns Masked result
  */
 export function maskSecretPatterns(
   text: string,
-  enabledCategories?: Record<string, boolean>
+  enabledCategories?: Record<string, boolean>,
+  customPatterns?: CustomPattern[]
 ): MaskResult {
-  const results = detectSecretPatterns(text, enabledCategories);
+  const results = detectSecretPatterns(text, enabledCategories, customPatterns);
 
   if (results.matches.length === 0) {
     return {
@@ -554,14 +602,22 @@ export function maskSecretPatterns(
       original: text,
       replacements: 0,
       categoryCounts: {},
+      customPatternCounts: {},
     };
   }
 
-  // Count matches by category
+  // Count matches by category and custom pattern ID
   const categoryCounts: Record<string, number> = {};
+  const customPatternCounts: Record<string, number> = {};
   results.matches.forEach((match) => {
     const category = match.category;
     categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+
+    // Track custom pattern matches separately
+    if (match.customPatternId) {
+      customPatternCounts[match.customPatternId] =
+        (customPatternCounts[match.customPatternId] || 0) + 1;
+    }
   });
 
   let masked = text;
@@ -570,8 +626,8 @@ export function maskSecretPatterns(
   results.matches.forEach((match) => {
     const baseReplacement = match.replacement;
 
-    // Extract ALL pattern labels (e.g., [AWS_KEY], [USER]:[PASS]@[HOST])
-    const labelMatches = baseReplacement.match(/\[([A-Z_]+)\]/g);
+    // Extract ALL pattern labels (e.g., [AWS_KEY], [USER]:[PASS]@[HOST], [TEST-123])
+    const labelMatches = baseReplacement.match(/\[([A-Z0-9_-]+)\]/g);
 
     let numberedReplacement = baseReplacement;
 
@@ -581,7 +637,7 @@ export function maskSecretPatterns(
         const randomId = generateRandomId();
         numberedReplacement = numberedReplacement.replace(
           label,
-          label.replace(/\[([A-Z_]+)\]/, `[$1#${randomId}]`)
+          label.replace(/\[([A-Z0-9_-]+)\]/, `[$1#${randomId}]`)
         );
       });
     }
@@ -599,6 +655,7 @@ export function maskSecretPatterns(
     original: text,
     replacements: results.matches.length,
     categoryCounts,
+    customPatternCounts,
   };
 }
 
@@ -607,13 +664,15 @@ export function maskSecretPatterns(
  * Uses random IDs for unique identification across sessions
  * @param text - Input text
  * @param enabledCategories - Optional category filters
+ * @param customPatterns - Optional custom patterns to include
  * @returns Restorable masked result
  */
 export function maskWithRestore(
   text: string,
-  enabledCategories?: Record<string, boolean>
+  enabledCategories?: Record<string, boolean>,
+  customPatterns?: CustomPattern[]
 ): RestorableMaskResult {
-  const results = detectSecretPatterns(text, enabledCategories);
+  const results = detectSecretPatterns(text, enabledCategories, customPatterns);
 
   if (results.matches.length === 0) {
     return {
@@ -633,8 +692,8 @@ export function maskWithRestore(
   results.matches.forEach((match) => {
     const baseReplacement = match.replacement;
 
-    // Extract ALL pattern labels (e.g., [AWS_KEY], [USER]:[PASS]@[HOST])
-    const labelMatches = baseReplacement.match(/\[([A-Z_]+)\]/g);
+    // Extract ALL pattern labels (e.g., [AWS_KEY], [USER]:[PASS]@[HOST], [TEST-123])
+    const labelMatches = baseReplacement.match(/\[([A-Z0-9_-]+)\]/g);
 
     let numberedReplacement = baseReplacement;
 
@@ -644,7 +703,7 @@ export function maskWithRestore(
         const randomId = generateRandomId();
         numberedReplacement = numberedReplacement.replace(
           label,
-          label.replace(/\[([A-Z_]+)\]/, `[$1#${randomId}]`)
+          label.replace(/\[([A-Z0-9_-]+)\]/, `[$1#${randomId}]`)
         );
       });
     }

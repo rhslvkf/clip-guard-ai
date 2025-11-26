@@ -28,11 +28,13 @@ export function handlePaste(event: ClipboardEvent): void {
 }
 
 /**
- * Process paste with async category settings fetch
+ * Process paste with async category settings and custom patterns fetch
  */
 async function processPaste(originalText: string): Promise<void> {
-  // Get category settings from storage
+  // Get category settings and custom patterns from storage
   let enabledCategories: Record<string, boolean> | undefined;
+  let customPatterns: any[] | undefined;
+
   try {
     const response = await chrome.runtime.sendMessage({
       type: 'GET_SETTINGS',
@@ -41,13 +43,18 @@ async function processPaste(originalText: string): Promise<void> {
     if (response.success && response.data.categories) {
       enabledCategories = response.data.categories;
     }
+
+    // Get custom patterns if available
+    if (response.success && response.data.customPatterns) {
+      customPatterns = response.data.customPatterns;
+    }
   } catch (error) {
-    console.error('[Clip Guard AI] Error getting category settings:', error);
+    console.error('[Clip Guard AI] Error getting settings:', error);
     // Continue with default behavior (all categories enabled)
   }
 
-  // Apply masking with category filters
-  const result = maskSecretPatterns(originalText, enabledCategories);
+  // Apply masking with category filters and custom patterns
+  const result = maskSecretPatterns(originalText, enabledCategories, customPatterns);
 
   // If no secrets detected, insert original text
   if (result.replacements === 0) {
@@ -83,6 +90,21 @@ async function processPaste(originalText: string): Promise<void> {
       });
     } catch (error) {
       console.error('[Clip Guard AI] Error incrementing category counts:', error);
+    }
+  }
+
+  // Increment custom pattern counts
+  if (result.customPatternCounts && Object.keys(result.customPatternCounts).length > 0) {
+    try {
+      // Send each custom pattern count separately
+      for (const [patternId, count] of Object.entries(result.customPatternCounts)) {
+        await chrome.runtime.sendMessage({
+          type: 'INCREMENT_CUSTOM_PATTERN_COUNT',
+          data: { patternId, count },
+        });
+      }
+    } catch (error) {
+      console.error('[Clip Guard AI] Error incrementing custom pattern counts:', error);
     }
   }
 
