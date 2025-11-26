@@ -9,7 +9,7 @@ A browser extension that automatically detects and masks secrets when you paste 
 
 ## 🚀 Quick Start
 
-1. **Install** the extension from Chrome Web Store *(coming soon)*
+1. **Install** the extension from Chrome Web Store
 2. **Paste** your code into any AI platform
 3. **Relax** - secrets are automatically masked
 
