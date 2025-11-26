@@ -123,7 +123,7 @@ Access advanced settings by clicking "Settings" in the popup:
 - Database connection URLs (PostgreSQL, MySQL, MongoDB, Redis)
 - JDBC connection strings
 
-### Network & Endpoints (4 patterns)
+### Network & Endpoints (4 patterns, optional)
 - IPv4 addresses
 - Full URLs
 - Quoted domain names

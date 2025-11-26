@@ -227,7 +227,7 @@ const CATEGORY_INFO: CategoryInfo[] = [
   },
   {
     name: 'network',
-    label: 'Network & Endpoints',
+    label: 'Network & Endpoints (Optional)',
     description: 'IP addresses, URLs, domains, API endpoints',
     patterns: [
       {

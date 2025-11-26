@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     private_keys: true,
     passwords: true,
     database: true,
-    network: true,
+    network: false, // Optional category, disabled by default
     pii: false, // Optional category, disabled by default
   },
   categoryCounts: {
